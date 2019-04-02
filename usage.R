@@ -21,9 +21,9 @@ all_models_urls <- find_all_urls(brand_model=interest, years = 2005:2019)
 ## Now we can extract the technical information
 ls_specs <- lapply(all_models_urls, extract_info_models)
 
-aass <- extract_info_models(all_urls = all_models_urls[[2]])
-ssaa <- extract_info_models(all_models_urls[[1]])
-
 ## The previous result is a list, lets make it a data frame
 final_specs <- do.call(bind_rows, ls_specs)
 
+
+
+final_specs[,1:19]

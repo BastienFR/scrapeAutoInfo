@@ -78,10 +78,10 @@ extract_info_model <- function(mod_url){
     matrix(nrow=length(.)/2, byrow = T) %>%
     as.data.frame(stringsAsFactors=F) %>%
     rename(measure = V1, value = V2) %>%
-    mutate(unit = gsub("^[0-9]*", "", value),
-           value = gsub(",", "", value),
-           value = as.numeric(gsub("[a-zA-Z]*$", "", value)))
-  
+    mutate(value = gsub(",", "", value),
+           unit = gsub("^[0-9]*", "", value),
+           value = as.numeric(unlist(regmatches(value, gregexpr("^[0-9]+",value)))) )
+
   wheels <- tech %>% html_nodes(xpath='//*[@id="suspension"]/div[2]') %>% html_text() %>%
     gsub(pattern = " ", "", .) %>%
     strsplit("\n") %>%
@@ -104,11 +104,12 @@ extract_info_model <- function(mod_url){
   
   num_data <- wheels %>% 
     filter(grepl('Wheel',measure)) %>%
+    filter(grepl("13|14|15|16|17|18|19|20|21|22",value)) %>% 
     mutate(unit="inch",
-           value=as.numeric(substr(value,1,2))) %>% 
+           value=as.numeric(gsub(".*?([0-9]+).*", "", value))) %>% 
     bind_rows(dimension) %>% 
     bind_rows(gaz)
-  
+
   cat_data <- wheels
   
   list(num_data, cat_data)
@@ -118,18 +119,20 @@ extract_info_model <- function(mod_url){
 #### model specs as one line data.frame
 
 spec_as_one_liner <- function(model_specs, model_url){
+  
+
   numer <- model_specs[[1]] %>% 
     mutate(measure = paste0(measure, "_",unit)) %>% 
     mutate(temp_id="temp") %>% 
     select(-unit) %>% 
-    #mutate(measure = ifelse(duplicated(measure), paste0(measure, sample(letters,1), measure))) %>% 
     filter(!is.na(value)) %>% 
+    mutate(measure = make.unique(measure)) %>% 
     reshape2::dcast(temp_id ~ measure) %>% 
     select(-temp_id)
   
   categ <- model_specs[[2]] %>% 
     mutate(temp_id="temp") %>% 
-    distinct(measure, .keep_all = T) %>%  ## make me loose some info, will have to fix
+    mutate(measure = make.unique(measure)) %>% 
     reshape2::dcast(temp_id ~ measure) %>% 
     select(-temp_id)
   
@@ -159,12 +162,15 @@ extract_info_models <- function(all_urls){
   return(res)
 }
 
-for(i in 1:length(all_urls)){
-  print(i)
-  spec_as_one_liner(model_specs = all_specs[[i]], model_url = all_urls[i])
-  
-}
-i=34
 
 
-###  je suis rendu à la ligne 125 de ce script, trouvé le moyen de changer le nom de mes measures qui sont identiques...
+### crap for testing
+# for(i in 1:length(all_urls)){
+#   print(i)
+#   extract_info_model(mod_url = all_urls[i])
+#   #print(warnings())
+   #spec_as_one_liner(model_specs = all_specs[[i]], model_url = all_urls[i])
+   
+# }
+# i=43
+
