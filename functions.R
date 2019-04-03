@@ -49,7 +49,7 @@ find_all_urls <- function(brand_model, years){
   principal_models <- lapply(webpages, list_from_search)
   
   # filter by years
-  principal_models <- sapply(principal_models, grep, pattern=paste(years, collapse = "|"), value = T)
+  principal_models <- lapply(principal_models, grep, pattern=paste(years, collapse = "|"), value = T)
   
   # in some case, some models are missing, we'll find them by diging deeper in the trees
   
@@ -82,6 +82,7 @@ extract_info_model <- function(mod_url){
            unit = gsub("^[0-9]*", "", value),
            value = as.numeric(unlist(regmatches(value, gregexpr("^[0-9]+",value)))) )
 
+  
   wheels <- tech %>% html_nodes(xpath='//*[@id="suspension"]/div[2]') %>% html_text() %>%
     gsub(pattern = " ", "", .) %>%
     strsplit("\n") %>%
@@ -154,7 +155,16 @@ spec_as_one_liner <- function(model_specs, model_url){
 
 extract_info_models <- function(all_urls){
 
-  all_specs <- lapply(all_urls,extract_info_model)
+  all_specs <- vector(mode="list", length = length(all_urls))
+  for(ur in 1:length(all_urls)) all_specs[[ur]] <- try(extract_info_model(all_urls[ur]))
+  
+  # if there were errors:
+  failed <- sapply(all_specs, class)=="try-error"
+  if(any(failed)) {
+    message("failed url: ", all_urls[failed])
+    all_specs <- all_specs[!failed]
+    all_urls <- all_urls[!failed]
+  } 
   
   res <- mapply(spec_as_one_liner, all_specs, all_urls, SIMPLIFY = F) %>% 
     do.call(bind_rows, .)
